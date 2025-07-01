@@ -73,3 +73,15 @@ FREQ_BANDS = {
     'beta': (13, 30),
     'gamma': (30, 50)
 }  # For use in extraction and plotting
+
+# Output control settings
+OUTPUT_SETTINGS = {
+    'brainwave_window_sec': 0.05,
+    'output_dir': 'output',
+    'enable_csv_export': True,
+    'enable_global_plot': True,
+    'enable_verification': True,
+    'downsample_reference': True,
+    'fill_missing': 'zero', # or 'interpolate'
+    'verification_metric': 'corr'  # Options: 'mse', 'corr', etc.
+}
