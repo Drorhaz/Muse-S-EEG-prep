@@ -1,80 +1,65 @@
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+# prep_runner.py
+
+import os
+import sys
+import pandas as pd
 from prep_function import (
     load_muse_data, base_filtering,
     median_filter_artifact_removal, dynamic_threshold_artifact_removal,
     auto_artifact_rejection, run_ica, annotate_ica_artifacts
 )
-from prep_config import CH_NAMES, ICA_SETTINGS
+from prep_config import ICA_SETTINGS, OUTPUT_SETTINGS
+from prep_output import (
+    plot_annotated_eeg, extract_brainwaves,
+    export_cleaned_data, plot_global_brainwaves,
+    verify_against_reference
+)
 
-def run_eeg_cleaning_pipeline(csv_path):
-    # Load raw EEG data
+def run_eeg_cleaning_pipeline(csv_path, output_dir=None):
+    output_dir = output_dir or OUTPUT_SETTINGS.get('output_dir', 'output')
+    os.makedirs(output_dir, exist_ok=True)
+
+    # === Load and extract timestamps ===
+    ref_df = pd.read_csv(csv_path)
+    if 'TimeStamp' not in ref_df.columns:
+        raise ValueError("Input CSV must contain a 'TimeStamp' column.")
+    timestamp_list = ref_df['TimeStamp'].tolist()
+
+    # === 1. Load and filter ===
     raw = load_muse_data(csv_path)
-    raw_before_cleaning = raw.copy()
-
-    # Apply cleaning steps in sequence
     raw = base_filtering(raw)
     raw = median_filter_artifact_removal(raw)
     raw = dynamic_threshold_artifact_removal(raw)
     raw = auto_artifact_rejection(raw)
 
-    # ICA step
+    # === 2. ICA ===
     ica = run_ica(raw)
-    ica.exclude = [0]  # Example: you can change this interactively
+    ica.exclude = [0]  # Example setting
     if ICA_SETTINGS['enabled']:
         raw = annotate_ica_artifacts(raw, ica, label=ICA_SETTINGS['annotation_label'], n_mads=ICA_SETTINGS['n_mads'])
     ica.apply(raw)
 
-    # === Annotation Summary ===
-    print("\n=== Annotation Summary ===")
-    label_counts = {}
-    for ann in raw.annotations:
-        label = ann['description']
-        label_counts[label] = label_counts.get(label, 0) + 1
-    for label, count in label_counts.items():
-        print(f"{label}: {count} annotations")
+    # === 3. Plot annotations ===
+    plot_annotated_eeg(raw, output_dir)
 
-    # Plot the first 20 seconds of each channel with annotations
-    duration_sec = 20
-    sfreq = raw.info['sfreq']
-    n_samples = int(duration_sec * sfreq)
-    times = raw.times[:n_samples]
-    data = raw.get_data()[:, :n_samples] * 1e6  # Convert to µV for display
+    # === 4. Brainwave Extraction with aligned timestamps ===
+    brainwave_df = extract_brainwaves(raw, timestamp_list)
 
-    # Generate unique colors for annotation labels
-    unique_labels = sorted(set(ann['description'] for ann in raw.annotations))
-    colormap = cm.get_cmap('tab10', len(unique_labels))
-    label_colors = {label: colormap(i) for i, label in enumerate(unique_labels)}
+    # === 5. Export CSV ===
+    if OUTPUT_SETTINGS.get('enable_csv_export', True):
+        export_cleaned_data(raw, brainwave_df, os.path.join(output_dir, "cleaned_output.csv"))
 
-    for ch_idx, ch_name in enumerate(CH_NAMES):
-        plt.figure(figsize=(12, 4))
-        plt.plot(times, data[ch_idx], label=f'{ch_name} Raw Signal', color='black')
-        plt.title(f'{ch_name} - First {duration_sec} Seconds with Annotations')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Amplitude (µV)')
-        plt.grid(True)
+    # === 6. Global Brainwave Plot ===
+    if OUTPUT_SETTINGS.get('enable_global_plot', True):
+        plot_global_brainwaves(brainwave_df, os.path.join(output_dir, "global_brainwaves.png"))
 
-        # Overlay annotations
-        for annotation in raw.annotations:
-            onset = annotation['onset']
-            duration = annotation['duration']
-            label = annotation['description']
-            end = onset + duration
-            if onset < duration_sec:
-                plt.axvspan(onset, min(end, duration_sec), color=label_colors[label], alpha=0.3, label=label)
+    # === 7. Verification ===
+    if OUTPUT_SETTINGS.get('enable_verification', True):
+        verify_against_reference(brainwave_df, csv_path, os.path.join(output_dir, "verification_results.csv"))
 
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        plt.legend(by_label.values(), by_label.keys())
-        plt.tight_layout()
-        plt.show()
-
-    return raw
+    print(f"Pipeline complete. Outputs saved to '{output_dir}'")
 
 if __name__ == '__main__':
-    import sys
-    import os
-
     if len(sys.argv) > 1:
         csv_path = sys.argv[1]
     else:
