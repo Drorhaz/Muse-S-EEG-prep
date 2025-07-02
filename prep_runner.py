@@ -6,7 +6,7 @@ from prep_function import (
     auto_artifact_rejection, run_ica, annotate_ica_artifacts
 )
 from prep_config import CH_NAMES, ICA_SETTINGS
-from prep_plot import plot_eeg_with_annotations, plot_single_channel_with_annotations
+from plot import plot_eeg_with_annotations, plot_single_channel_with_annotations
 
 def run_eeg_cleaning_pipeline(csv_path):
     # Load raw EEG data
