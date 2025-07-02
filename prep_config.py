@@ -6,6 +6,7 @@
 
 # Raw channel column names in the CSV file
 RAW_CHANNEL_NAMES = ['RAW_AF7', 'RAW_AF8', 'RAW_TP9', 'RAW_TP10']
+# RAW_CHANNEL_NAMES = ['eeg1', 'eeg2', 'eeg3', 'eeg4']
 
 # Channel names used in MNE after loading
 CH_NAMES = ['AF7', 'AF8', 'TP9', 'TP10']
@@ -27,7 +28,7 @@ MUSE_POSITIONS = {
 # Base filtering settings for preprocessing EEG
 BASE_FILTER_SETTINGS = {
     'highpass_freq': 1.0,
-    'lowpass_freq': 100.0,
+    'lowpass_freq': 40.0,
     'notch_freq': 50.0,
     'filter_design': 'firwin',
     'eeg_reference': 'average'

@@ -14,16 +14,36 @@ from prep_config import (
 
 # === 1. Load EEG data from CSV ===
 def load_muse_data(csv_path):
+    # === Load and extract timestamps ===
     df = pd.read_csv(csv_path)
-    df = df[RAW_CHANNEL_NAMES].dropna()
-    eeg_data = df.values.T * 1e-6  # Convert µV to V
+    if not any(x.lower() == 'timestamp' for x in df.columns):
+        raise ValueError("Input CSV must contain a 'TimeStamp' column.")
+    time_key = [x for x in df.columns if x.lower() == 'timestamp'][0]
+    timestamp_list = df[time_key].tolist()
+    
+    df_eeg = df[RAW_CHANNEL_NAMES]
+    eeg_data = df_eeg.values.T * 1e-6  # Convert µV to V
+    nan_prec = np.isnan(eeg_data).sum() / df_eeg.shape[0]
+    print(f"precentage of NaN values in EEG data: {nan_prec * 100:.2f}%")
 
-    info = mne.create_info(ch_names=CH_NAMES, sfreq=SFREQ, ch_types=CH_TYPES)
-    raw = mne.io.RawArray(eeg_data, info)
-    montage = mne.channels.make_dig_montage(ch_pos=MUSE_POSITIONS)
-    raw.set_montage(montage)
-
-    return raw
+    # 1. In pandas, fill all NaNs:
+    df_clean = (df_eeg.interpolate(method='linear', axis=0).fillna(method='bfill').fillna(method='ffill'))
+    
+    # 2. Remove DC offset (baseline correction) per channel
+    #    Now each channel will have mean ≈ 0 counts
+    df_centered = df_clean - df_clean.mean(axis=0)
+    
+    # 3. Apply your scale factor to go from “counts” → volts
+    #    e.g. if 1 count = 0.488 µV, then:
+    scale_factor = 0.488e-6  # volts per count
+    data_volts = df_centered.values * scale_factor  # shape: (n_times, n_channels)
+    
+    # 4. Build your MNE RawArray with zero-mean, physical-unit data
+    info = mne.create_info(RAW_CHANNEL_NAMES, SFREQ, CH_TYPES)
+    raw = mne.io.RawArray(data_volts.T, info)
+    # montage = mne.channels.make_dig_montage(ch_pos=MUSE_POSITIONS)
+    # raw.set_montage(montage)
+    return raw, timestamp_list
 
 # === 2. Filtering ===
 def base_filtering(raw):
@@ -31,7 +51,6 @@ def base_filtering(raw):
     raw.notch_filter(BASE_FILTER_SETTINGS['notch_freq'], fir_design=BASE_FILTER_SETTINGS['filter_design'])
     raw.filter(None, BASE_FILTER_SETTINGS['lowpass_freq'], fir_design=BASE_FILTER_SETTINGS['filter_design'])
     raw.set_eeg_reference(ref_channels=BASE_FILTER_SETTINGS['eeg_reference'])
-    return raw
 
 # === 3. Median Filter ===
 def median_filter_artifact_removal(raw):

@@ -19,14 +19,8 @@ def run_eeg_cleaning_pipeline(csv_path, output_dir=None):
     output_dir = output_dir or OUTPUT_SETTINGS.get('output_dir', 'output')
     os.makedirs(output_dir, exist_ok=True)
 
-    # === Load and extract timestamps ===
-    ref_df = pd.read_csv(csv_path)
-    if 'TimeStamp' not in ref_df.columns:
-        raise ValueError("Input CSV must contain a 'TimeStamp' column.")
-    timestamp_list = ref_df['TimeStamp'].tolist()
-
     # === 1. Load and filter ===
-    raw = load_muse_data(csv_path)
+    raw, timestamp_list = load_muse_data(csv_path)
     raw = base_filtering(raw)
     raw = median_filter_artifact_removal(raw)
     raw = dynamic_threshold_artifact_removal(raw)
@@ -63,7 +57,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         csv_path = sys.argv[1]
     else:
-        csv_path = "mindMonitor_2025-05-21--23-26-36.csv"
+        csv_path = r"C:\Users\shakeda\Downloads\eeg_data_muse_from_app_ToWorkOn.csv"
 
     if not os.path.exists(csv_path):
         print(f"File not found: {csv_path}")
