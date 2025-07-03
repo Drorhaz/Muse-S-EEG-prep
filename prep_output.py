@@ -94,11 +94,18 @@ def extract_frequency_bands(raw, bands=None):
 
 
 def export_all_data_to_csv(per_channel_raws, csv_path):
-    # 1. Grab the common time axis
-    times = per_channel_raws[next(iter(per_channel_raws))].times  # in seconds
+    # 1. Grab the common time axis and the shared annotations
+    first_raw = per_channel_raws[next(iter(per_channel_raws))]
+    times = first_raw.times  # in seconds
+    annot = first_raw.annotations
+    artifact = np.array([''] * len(times), dtype=object)
 
-    # 2. Build a dict of columns
-    all_data = {'time_s': times}
+    # 2. Fill in the description for any timepoint inside an annotation
+    for onset, duration, desc in zip(annot.onset, annot.duration, annot.description):
+        mask = (times >= onset) & (times < (onset + duration))
+        artifact[mask] = desc
+
+    all_data = {'time_s': times, 'artifact': artifact}
     for raw_ch in per_channel_raws.values():
         data = raw_ch.get_data()  # shape (n_ch, n_samp)
         for idx, name in enumerate(raw_ch.ch_names):

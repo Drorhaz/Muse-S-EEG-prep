@@ -39,6 +39,8 @@ def load_muse_data(csv_path):
     # 4. Build your MNE RawArray with zero-mean, physical-unit data
     info = mne.create_info(CH_NAMES, SFREQ, CH_TYPES)
     raw = mne.io.RawArray(data_volts.T, info)
+    montage = mne.channels.make_dig_montage(MUSE_POSITIONS, coord_frame='head')
+    raw.set_montage(montage)
     return raw
 
 # === 2. Filtering ===
@@ -168,12 +170,21 @@ def auto_artifact_rejection(raw):
 # === 6. ICA ===
 def run_ica(raw):
     ica = ICA(n_components=4, method='fastica', random_state=42)
-    ica.fit(raw)
+    ica.fit(raw, reject_by_annotation=True)
     ica.plot_components(inst=raw)
     ica.plot_sources(raw)
     for i in range(ica.n_components_):
         ica.plot_properties(raw, picks=i)
     return ica
+
+
+def remove_ica_comp_and_plot(ica, raw, comps_to_remove):
+    ica.exclude = comps_to_remove  
+    raw_clean = raw.copy()
+    ica.apply(raw_clean)
+    raw.plot(n_channels=4, title='Original')
+    raw_clean.plot(n_channels=4, title='After ICA cleanup')
+
 
 # === 7. Annotate ICA artifacts ===
 def annotate_ica_artifacts(raw, ica, label='ica_artifact', n_mads=6):
