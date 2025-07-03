@@ -1,73 +1,96 @@
-# Muse-S-EEG-prep
-Muse S EEG preprocessor  - Hackathon 
-# 🧠 Muse-S EEG Brainwave Extraction – Hackathon Guidelines
+🧠 Muse-S-EEG-prep
+Modular Muse-S EEG Preprocessor – Hackathon Project
 
-## 🎯 Project Goal
-Develop a tool to extract and validate brainwave activity (Alpha, Beta, Gamma, Delta, Theta) from raw Muse-S EEG data. Filters are applied to clean the signal and compute wave power per channel and globally, with visual previews and validation against Mind Monitor reference values.
+🎯 Goal
+Extract, clean, and visualize brainwave activity (Delta, Theta, Alpha, Beta, Gamma) from Muse-S EEG recordings.
 
----
+This pipeline empowers EEG researchers and developers with a streamlined, modular process for cleaning and analyzing Muse-S data. Transparent plots and customizable filters make it ideal for experimentation, research, and hackathons.
 
-## 📥 Input
-- **CSV from Mind Monitor**, containing:
-  - Raw EEG (4 channels: TP9, AF7, AF8, TP10)
-  - Precomputed brainwaves (for verification only)
+📥 Input
+CSV exported from Mind Monitor, containing:
 
----
+Raw EEG channels: TP9, AF7, AF8, TP10
 
-## 📤 Output
-1. **Plots**
-   - Raw EEG (4 subplots)
-   - Base-filtered EEG + annotation preview for each filter:
-     - Median filter → highlights spikes
-     - Threshold artifact → marks extreme regions
-     - Amplitude rejection → flags high/low segments
-     - ICA → tags blink/heartbeat artifacts
-   - Final filtered vs. raw EEG (4 subplots)
-   - Global brainwave graph (all 5 waves)
-   - (Optional) Brainwave validation overlay
+TimeStamp column
 
-2. **CSV Export**
-   - Raw EEG
-   - Cleaned EEG
-   - Brainwave power per channel (4 × 5)
-   - Global brainwave power (5)
+📤 Output
+🔹 Visualizations
+Raw EEG – 4 subplots (1 per channel)
 
-3. **Verification Report**
-   - 20 metrics: computed vs. Mind Monitor brainwave accuracy (method TBD)
+Filtered EEG – high-pass + notch + low-pass
 
----
+Artifact Annotations – MAD-based threshold overlays
 
-## 👥 Team Roles
+ICA Cleanup Preview – original vs. ICA-cleaned traces
 
-| Group | Focus                            |
-|-------|----------------------------------|
-| 1     | Input, CLI/GUI, plotting         |
-| 2     | Filtering pipeline (base + optional) |
-| 3     | Brainwave extraction + validation |
+Brainwave Decomposition – 5-band signals per channel (Delta → Gamma)
 
-> Shared repo on GitHub. Use Python, MNE, NumPy, Pandas, Matplotlib/Plotly.
+Power Spectral Density (PSD) – 0–50 Hz full-spectrum plot
 
----
+Validation Plot (optional) – correlation and MSE comparison (original vs. filtered)
 
-## ⚙️ Filtering Flow
-- **Base filter** always runs first.
-- User selects optional filters:
-  - Median
-  - Dynamic Threshold
-  - Amplitude Rejection
-  - ICA (only after base)
-- Plots show **base-filtered signal** with **preview annotations** of what each filter would affect—before applying.
+🔹 Files
+.csv containing:
 
----
+Raw + filtered EEG
 
-## ✅ Verification
-- Compute brainwaves from cleaned EEG
-- Compare against Mind Monitor values
-- Output 1 metric per channel × wave (20 total)
-- Methods under evaluation: MSE, correlation, etc.
+Brainwave power per channel × band
 
----
+Annotation metadata
 
-## 📌 Summary
-This tool empowers users to clean, visualize, and validate EEG data from Muse-S using a modular pipeline. Each step is transparent and interactive, supporting both research and development use cases.
+.fif MNE files for each decomposed channel
 
+🧪 Pipeline Overview
+1. Load CSV
+Clean and scale EEG signals to volts
+
+Convert to mne.Raw object
+
+2. Raw Plot
+Visual inspection of unfiltered EEG signals
+
+3. Base Filtering
+High-pass (1 Hz)
+
+Notch filter (50 Hz)
+
+Low-pass (40 Hz)
+
+Average referencing
+
+4. Filtered Plot
+Displays cleaned EEG signals
+
+5. Artifact Annotation
+Annotate high-amplitude segments using MAD threshold
+
+6. ICA Decomposition (Optional)
+Detect and remove blink/heartbeat artifacts
+
+Preview and reject ICA components interactively or manually
+
+7. Brainwave Extraction
+Decompose each channel into 5 frequency bands
+
+Store each as a new MNE Raw object
+
+8. Spectral Plotting
+PSD plot across all channels (0–50 Hz)
+
+Per-channel wave decomposition plots
+
+9. Export Results
+.csv with time, bands, and annotations
+
+.fif files for in-depth EEG analysis
+
+🛠️ Built With
+Python
+
+MNE
+
+NumPy
+
+Pandas
+
+Matplotlib
