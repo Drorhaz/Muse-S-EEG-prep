@@ -28,7 +28,7 @@ def load_muse_data(csv_path):
     #    Now each channel will have mean ≈ 0 counts
     df_centered = df_clean - df_clean.mean(axis=0)
     
-    # 3. Apply your scale factor to go from “counts” → volts
+    # 3. Apply your scale factor to go from "counts" → volts
     #    e.g. if 1 count = 0.488 µV, then:
     scale_factor = 0.488e-6  # volts per count
     data_volts = df_centered.values * scale_factor  # shape: (n_times, n_channels)
@@ -130,13 +130,32 @@ def merge_overlapping_annotations(raw, label='BAD_dynamic'):
 
 
 # === 4. ICA ===
-def run_ica(raw):
+def run_ica(raw, output_dir=None):
+    """Run ICA and plot components.
+    
+    Parameters
+    ----------
+    raw : mne.io.Raw
+        The raw data to process
+    output_dir : str | None
+        Not used, kept for backward compatibility
+    
+    Returns
+    -------
+    ica : mne.preprocessing.ICA
+        The fitted ICA object
+    """
     ica = ICA(n_components=4, method='fastica', random_state=42)
     ica.fit(raw, reject_by_annotation=True)
+    
+    # Plot components and sources
     ica.plot_components(inst=raw)
     ica.plot_sources(raw)
+    
+    # Plot properties for each component
     for i in range(ica.n_components_):
         ica.plot_properties(raw, picks=i)
+    
     return ica
 
 
@@ -147,3 +166,52 @@ def remove_ica_comp_and_plot(ica, raw, comps_to_remove):
     raw.plot(n_channels=4, title='Original')
     raw_clean.plot(n_channels=4, title='After ICA cleanup')
     return raw_clean
+
+def plot_and_save_psd(raw, output_dir, min_duration=1.0):
+    """Plot and save PSD using only segments longer than min_duration.
+    
+    Parameters
+    ----------
+    raw : mne.io.Raw
+        The raw data to plot
+    output_dir : str
+        Directory to save the plot
+    min_duration : float
+        Minimum duration in seconds for segments to include
+    
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The PSD plot figure
+    """
+    import os
+    
+    # Store original annotations
+    original_annot = raw.annotations.copy()
+    
+    # Get the annotations that mark bad segments
+    bad_annot = raw.annotations[raw.annotations.description == 'BAD_dynamic']
+    
+    # Keep only annotations for segments longer than min_duration
+    long_bad_annot = bad_annot[bad_annot.duration >= min_duration]
+    
+    # Create a new annotations object with only the long segments
+    raw.set_annotations(long_bad_annot)
+    
+    # Plot PSD using standard parameters
+    fig = raw.plot_psd(picks='all',
+                    fmin=0,
+                    fmax=50,
+                    n_fft=256,  # 1 second window
+                    reject_by_annotation=True,
+                    average=False,
+                    show=False)  # Don't show yet to save first
+    
+    # Save the figure
+    fig.savefig(os.path.join(output_dir, 'power_spectral_density.png'))
+    
+    # Now display the figure
+    fig.show()
+    
+    # Restore original annotations
+    raw.set_annotations(original_annot)
