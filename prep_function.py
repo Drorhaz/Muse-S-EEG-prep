@@ -19,7 +19,8 @@ def load_muse_data(csv_path):
     if not any(x.lower() == 'timestamp' for x in df.columns):
         raise ValueError("Input CSV must contain a 'TimeStamp' column.")
     
-    df_eeg = df[RAW_CHANNEL_NAMES]
+    curr_raw_names = [val for key, val in RAW_CHANNEL_NAMES.items() if key in df.columns][0]
+    df_eeg = df[curr_raw_names]
     eeg_data = df_eeg.values.T * 1e-6  # Convert µV to V
     nan_prec = np.isnan(eeg_data).sum() / df_eeg.shape[0]
     print(f"Percentage of NaN values interpolated in EEG data: {nan_prec * 100:.2f}%")
@@ -80,14 +81,14 @@ def median_filter_artifact_removal(raw):
 def annotate_dynamic_p2p(raw, n_mads=3, win_sec=0.2, step_sec=0.1, label='BAD_dynamic'):
     sf = raw.info['sfreq']
     data = raw.get_data()
-    win_samp, step_samp = int(win_sec*sf), int(step_sec*sf)
+    win_samp, step_samp = int(win_sec * sf), int(step_sec * sf)
     
     # build P2P matrix: windows × channels
-    n_win = 1 + (data.shape[1] - win_samp)//step_samp
+    n_win = 1 + (data.shape[1] - win_samp) // step_samp
     p2p   = np.zeros((n_win, data.shape[0]))
     for w in range(n_win):
-        seg = data[:, w*step_samp : w*step_samp+win_samp]
-        p2p[w] = seg.ptp(axis=1)
+        seg = data[:, w*step_samp : w*step_samp + win_samp]
+        p2p[w] = np.ptp(seg, axis=1)
     
     # channel-wise median & MAD on the p2p distribution
     med = np.median(p2p, axis=0)
