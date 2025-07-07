@@ -27,8 +27,6 @@ Brainwave Decomposition – 5-band signals per channel (Delta → Gamma)
 
 Power Spectral Density (PSD) – 0–50 Hz full-spectrum plot
 
-Validation Plot (optional) – correlation and MSE comparison (original vs. filtered)
-
 🔹 Files
 .csv containing:
 
@@ -86,11 +84,7 @@ Per-channel wave decomposition plots
 
 🛠️ Built With
 Python
-
 MNE
-
 NumPy
-
 Pandas
-
 Matplotlib
